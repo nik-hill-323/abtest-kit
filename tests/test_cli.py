@@ -1,6 +1,7 @@
 import json
 
 import pandas as pd
+import pytest
 
 from abtest.cli import main
 
@@ -26,3 +27,16 @@ def test_ttest_cli_from_csv(tmp_path, capsys):
     main(["ttest", "--csv", str(path)])
     out = json.loads(capsys.readouterr().out)
     assert out["difference"] == 5.0
+
+
+def test_mde_means_cli(capsys):
+    main(["mde-means", "--std", "12", "--n-per-arm", "8000"])
+    out = json.loads(capsys.readouterr().out)
+    assert out["mde"] == pytest.approx(0.532, abs=0.005)
+
+
+def test_mde_means_cli_round_trips_power_means(capsys):
+    main(["power-means", "--std", "10", "--mde", "2"])
+    n = json.loads(capsys.readouterr().out)["n_per_arm"]
+    main(["mde-means", "--std", "10", "--n-per-arm", str(n)])
+    assert json.loads(capsys.readouterr().out)["mde"] == pytest.approx(2, rel=1e-3)

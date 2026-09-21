@@ -29,7 +29,7 @@ abtest ztest --control 480 1000 --treatment 530 1000
 
 | Module | Functions | Method |
 |---|---|---|
-| `abtest.power` | `sample_size_proportions`, `sample_size_means`, `mde_proportions` | Closed-form normal approximation |
+| `abtest.power` | `sample_size_proportions`, `sample_size_means`, `mde_proportions`, `mde_means` | Closed-form normal approximation |
 | `abtest.frequentist` | `ztest_proportions`, `ttest_means` | Pooled-SE z-test, Welch's t-test, Wald intervals |
 | `abtest.bayesian` | `bayes_proportions`, `bayes_means` | Beta-Binomial and Normal posteriors, P(B > A), expected loss |
 | `abtest.sequential` | `msprt_from_observations`, `msprt_proportions` | Mixture SPRT with always-valid p-values (Johari et al., 2017) |
@@ -46,6 +46,21 @@ straight into JSON, a DataFrame, or a dashboard.
 ```python
 from abtest import sample_size_proportions
 sample_size_proportions(baseline=0.05, mde=0.005)   # 31,234 users per arm
+```
+
+Or the other way round, when the traffic is fixed and you want to know what the
+test can actually see. Two weeks of traffic is 8,000 users per arm and revenue
+per user has a standard deviation of $12:
+
+```python
+from abtest import mde_means
+mde_means(std=12, n_per_arm=8000)                   # $0.53 per user
+```
+
+Both are on the CLI too:
+
+```bash
+abtest mde-means --std 12 --n-per-arm 8000          # {"mde": 0.5315634208977957}
 ```
 
 **Read the result two ways.** Frequentist and Bayesian answers from the same counts:
@@ -91,7 +106,7 @@ pytest
 
 The suite checks each method against an independent reference: the z-test
 against a chi-square test, Welch's test against SciPy, sample sizes against
-textbook tables, and the sequential test against a simulated false positive
+Cohen's published power tables, and the sequential test against a simulated false positive
 rate under continuous peeking.
 
 ## References

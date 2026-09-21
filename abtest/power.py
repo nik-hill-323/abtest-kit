@@ -78,3 +78,25 @@ def mde_proportions(
     z_alpha, z_beta = _z(alpha, power, two_sided)
     se = math.sqrt(2 * baseline * (1 - baseline) / n_per_arm)
     return (z_alpha + z_beta) * se
+
+
+def mde_means(
+    std: float,
+    n_per_arm: int,
+    alpha: float = 0.05,
+    power: float = 0.8,
+    two_sided: bool = True,
+) -> float:
+    """Smallest difference in means detectable with ``n_per_arm`` users per arm,
+    given a common standard deviation ``std``.
+
+    This is the exact inverse of :func:`sample_size_means`: both sides use the
+    same normal approximation, so feeding the result back in returns
+    ``n_per_arm`` (up to the rounding up of a partial user).
+    """
+    if std <= 0:
+        raise ValueError("std must be positive")
+    if n_per_arm <= 0:
+        raise ValueError("n_per_arm must be positive")
+    z_alpha, z_beta = _z(alpha, power, two_sided)
+    return (z_alpha + z_beta) * std * math.sqrt(2 / n_per_arm)

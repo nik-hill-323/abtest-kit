@@ -1,6 +1,7 @@
 """Command line interface.
 
     abtest power --baseline 0.05 --mde 0.005
+    abtest mde-means --std 12 --n-per-arm 8000
     abtest ztest --control 480 1000 --treatment 530 1000
     abtest bayes --control 480 1000 --treatment 530 1000
     abtest ttest --csv data.csv --group-col variant --metric-col revenue
@@ -17,6 +18,7 @@ import pandas as pd
 from . import (
     bayes_means,
     bayes_proportions,
+    mde_means,
     sample_size_means,
     sample_size_proportions,
     ttest_means,
@@ -63,6 +65,12 @@ def build_parser() -> argparse.ArgumentParser:
     pm.add_argument("--alpha", type=float, default=0.05)
     pm.add_argument("--power", type=float, default=0.8)
 
+    mm = sub.add_parser("mde-means", help="smallest detectable difference in means for a fixed n")
+    mm.add_argument("--std", type=float, required=True)
+    mm.add_argument("--n-per-arm", type=int, required=True)
+    mm.add_argument("--alpha", type=float, default=0.05)
+    mm.add_argument("--power", type=float, default=0.8)
+
     z = sub.add_parser("ztest", help="two-proportion z-test")
     _add_counts(z)
     z.add_argument("--alpha", type=float, default=0.05)
@@ -89,6 +97,8 @@ def main(argv: list[str] | None = None) -> int:
         }
     elif args.cmd == "power-means":
         out = {"n_per_arm": sample_size_means(args.std, args.mde, args.alpha, args.power)}
+    elif args.cmd == "mde-means":
+        out = {"mde": mde_means(args.std, args.n_per_arm, args.alpha, args.power)}
     elif args.cmd == "ztest":
         out = ztest_proportions(*args.control, *args.treatment, alpha=args.alpha).to_dict()
     elif args.cmd == "bayes":
