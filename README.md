@@ -34,6 +34,7 @@ abtest ztest --control 480 1000 --treatment 530 1000
 | `abtest.bayesian` | `bayes_proportions`, `bayes_means` | Beta-Binomial and Normal posteriors, P(B > A), expected loss |
 | `abtest.sequential` | `msprt_from_observations`, `msprt_proportions` | Mixture SPRT with always-valid p-values (Johari et al., 2017) |
 | `abtest.cuped` | `cuped_adjust` | CUPED variance reduction (Deng et al., 2013) |
+| `abtest.multiple` | `bonferroni`, `benjamini_hochberg`, `adjust` | Family-wise error control, Benjamini-Hochberg false discovery rate |
 
 Every function returns a dataclass with a `to_dict()` method so results drop
 straight into JSON, a DataFrame, or a dashboard.
@@ -76,6 +77,26 @@ b.prob_treatment_better                    # 0.995
 b.expected_loss_choosing_treatment         # 0.000003  (risk of shipping B if A is truly better)
 ```
 
+**Read out more than one metric.** Five metrics at alpha = 0.05 means a 23%
+chance of at least one false positive, so correct before you believe the list:
+
+```python
+from abtest import adjust
+
+p_values = {"signup_rate": 0.0098, "activation": 0.0145, "d7_retention": 0.1302,
+            "support_tickets": 0.1432, "unsubscribes": 0.1773}
+
+adjust(list(p_values.values()), method="bonferroni", metrics=list(p_values)).significant_metrics
+# ['signup_rate']                        adjusted: 0.049, 0.073, 0.651, 0.716, 0.887
+
+adjust(list(p_values.values()), method="bh", metrics=list(p_values)).significant_metrics
+# ['signup_rate', 'activation']          adjusted: 0.036, 0.036, 0.177, 0.177, 0.177
+```
+
+Bonferroni controls the chance of *any* false positive and drops activation;
+Benjamini-Hochberg controls the share of false positives among the metrics you
+report and keeps it. Pick the one that matches the decision you are making.
+
 **Stop early without lying to yourself.** Feed observations in arrival order and
 check the always-valid p-value at every look:
 
@@ -106,11 +127,13 @@ pytest
 
 The suite checks each method against an independent reference: the z-test
 against a chi-square test, Welch's test against SciPy, sample sizes against
-Cohen's published power tables, and the sequential test against a simulated false positive
+Cohen's published power tables, the corrections against the worked example in
+Benjamini and Hochberg (1995), and the sequential test against a simulated false positive
 rate under continuous peeking.
 
 ## References
 
+- Benjamini, Hochberg. *Controlling the False Discovery Rate: A Practical and Powerful Approach to Multiple Testing.* JRSS B, 1995.
 - Johari, Pekelis, Walsh. *Always Valid Inference: Bringing Sequential Analysis to A/B Testing.* 2017.
 - Deng, Xu, Kohavi, Walker. *Improving the Sensitivity of Online Controlled Experiments by Utilizing Pre-Experiment Data.* WSDM 2013.
 - Kohavi, Tang, Xu. *Trustworthy Online Controlled Experiments.* Cambridge University Press, 2020.
