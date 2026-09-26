@@ -5,6 +5,7 @@
     abtest ztest --control 480 1000 --treatment 530 1000
     abtest bayes --control 480 1000 --treatment 530 1000
     abtest ttest --csv data.csv --group-col variant --metric-col revenue
+    abtest ratio --csv data.csv --numerator-col revenue --denominator-col sessions
 """
 
 from __future__ import annotations
@@ -19,6 +20,7 @@ from . import (
     bayes_means,
     bayes_proportions,
     mde_means,
+    ratio_metric,
     sample_size_means,
     sample_size_proportions,
     ttest_means,
@@ -46,6 +48,18 @@ def _load_arms(args: argparse.Namespace):
     if a.size == 0 or b.size == 0:
         sys.exit("one of the arms is empty; check --group-col and labels")
     return a, b
+
+
+def _load_ratio_arms(args: argparse.Namespace):
+    df = pd.read_csv(args.csv)
+    arms = []
+    for label in (args.control_label, args.treatment_label):
+        rows = df.loc[df[args.group_col] == label]
+        if rows.empty:
+            sys.exit(f"no rows with {args.group_col} == {label!r}; check --group-col and labels")
+        arms.append(rows[args.numerator_col].to_numpy())
+        arms.append(rows[args.denominator_col].to_numpy())
+    return arms
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -84,6 +98,15 @@ def build_parser() -> argparse.ArgumentParser:
 
     bm = sub.add_parser("bayes-means", help="Bayesian comparison of means from a CSV")
     _add_csv(bm)
+
+    rt = sub.add_parser("ratio", help="delta-method test for a per-user ratio metric")
+    rt.add_argument("--csv", required=True, help="one row per user")
+    rt.add_argument("--group-col", default="group")
+    rt.add_argument("--numerator-col", required=True, help="e.g. the user's total revenue")
+    rt.add_argument("--denominator-col", required=True, help="e.g. the user's session count")
+    rt.add_argument("--control-label", default="control")
+    rt.add_argument("--treatment-label", default="treatment")
+    rt.add_argument("--alpha", type=float, default=0.05)
     return p
 
 
@@ -107,6 +130,8 @@ def main(argv: list[str] | None = None) -> int:
         out = ttest_means(*_load_arms(args), alpha=args.alpha).to_dict()
     elif args.cmd == "bayes-means":
         out = bayes_means(*_load_arms(args)).to_dict()
+    elif args.cmd == "ratio":
+        out = ratio_metric(*_load_ratio_arms(args), alpha=args.alpha).to_dict()
     else:  # pragma: no cover
         raise SystemExit(2)
     print(json.dumps(out, indent=2))

@@ -35,6 +35,7 @@ abtest ztest --control 480 1000 --treatment 530 1000
 | `abtest.sequential` | `msprt_from_observations`, `msprt_proportions` | Mixture SPRT with always-valid p-values (Johari et al., 2017) |
 | `abtest.cuped` | `cuped_adjust` | CUPED variance reduction (Deng et al., 2013) |
 | `abtest.multiple` | `bonferroni`, `benjamini_hochberg`, `adjust` | Family-wise error control, Benjamini-Hochberg false discovery rate |
+| `abtest.ratio_metrics` | `ratio_metric`, `ratio_estimate` | Delta method for per-user ratio metrics (Deng et al., 2018) |
 
 Every function returns a dataclass with a `to_dict()` method so results drop
 straight into JSON, a DataFrame, or a dashboard.
@@ -97,6 +98,29 @@ Bonferroni controls the chance of *any* false positive and drops activation;
 Benjamini-Hochberg controls the share of false positives among the metrics you
 report and keeps it. Pick the one that matches the decision you are making.
 
+**Analyse a ratio metric without fooling yourself.** Revenue per session is a
+ratio of two totals, not a mean, so a t-test over the session table treats
+sessions from the same user as independent and reports an interval that is too
+narrow. Pass one row per user and let the delta method handle it:
+
+```python
+from abtest import ratio_metric
+
+r = ratio_metric(revenue_c, sessions_c, revenue_t, sessions_t)
+r.relative_lift                            # 0.090
+r.relative_ci_low, r.relative_ci_high      # (0.057, 0.124)
+r.p_value                                  # 4e-08
+```
+
+On simulated traffic with three sessions per user the delta-method standard
+error is about 1.9x the naive session-level one - the entire gap is the
+within-user correlation the naive test ignores. Also on the CLI, one row per
+user:
+
+```bash
+abtest ratio --csv users.csv --numerator-col revenue --denominator-col sessions
+```
+
 **Stop early without lying to yourself.** Feed observations in arrival order and
 check the always-valid p-value at every look:
 
@@ -128,12 +152,14 @@ pytest
 The suite checks each method against an independent reference: the z-test
 against a chi-square test, Welch's test against SciPy, sample sizes against
 Cohen's published power tables, the corrections against the worked example in
-Benjamini and Hochberg (1995), and the sequential test against a simulated false positive
+Benjamini and Hochberg (1995), the delta-method standard error against a
+bootstrap over users, and the sequential test against a simulated false positive
 rate under continuous peeking.
 
 ## References
 
 - Benjamini, Hochberg. *Controlling the False Discovery Rate: A Practical and Powerful Approach to Multiple Testing.* JRSS B, 1995.
 - Johari, Pekelis, Walsh. *Always Valid Inference: Bringing Sequential Analysis to A/B Testing.* 2017.
+- Deng, Knoblich, Lu. *Applying the Delta Method in Metric Analytics: A Practical Guide with Novel Ideas.* KDD 2018.
 - Deng, Xu, Kohavi, Walker. *Improving the Sensitivity of Online Controlled Experiments by Utilizing Pre-Experiment Data.* WSDM 2013.
 - Kohavi, Tang, Xu. *Trustworthy Online Controlled Experiments.* Cambridge University Press, 2020.
