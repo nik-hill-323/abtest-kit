@@ -36,6 +36,7 @@ abtest ztest --control 480 1000 --treatment 530 1000
 | `abtest.cuped` | `cuped_adjust` | CUPED variance reduction (Deng et al., 2013) |
 | `abtest.multiple` | `bonferroni`, `benjamini_hochberg`, `adjust` | Family-wise error control, Benjamini-Hochberg false discovery rate |
 | `abtest.ratio_metrics` | `ratio_metric`, `ratio_estimate` | Delta method for per-user ratio metrics (Deng et al., 2018) |
+| `abtest.srm` | `srm_check` | Sample ratio mismatch: chi-square goodness of fit against the configured split |
 
 Every function returns a dataclass with a `to_dict()` method so results drop
 straight into JSON, a DataFrame, or a dashboard.
@@ -63,6 +64,22 @@ Both are on the CLI too:
 
 ```bash
 abtest mde-means --std 12 --n-per-arm 8000          # {"mde": 0.5315634208977957}
+```
+
+**Check the split before the metrics.** If the arms are not the size the
+allocation says they should be, something is losing users in one arm and every
+metric comparison is suspect:
+
+```python
+from abtest import srm_check
+r = srm_check([821588, 815482])            # configured 50/50
+r.p_value, r.mismatch                      # 1.8e-06, True  (ratio is 0.993, still an SRM)
+
+srm_check([1000, 9000], expected_ratios=[0.1, 0.9]).mismatch   # False
+```
+
+```bash
+abtest srm --counts 821588 815482
 ```
 
 **Read the result two ways.** Frequentist and Bayesian answers from the same counts:
@@ -152,7 +169,8 @@ pytest
 The suite checks each method against an independent reference: the z-test
 against a chi-square test, Welch's test against SciPy, sample sizes against
 Cohen's published power tables, the corrections against the worked example in
-Benjamini and Hochberg (1995), the delta-method standard error against a
+Benjamini and Hochberg (1995), the SRM check against the worked example in
+Kohavi et al. (2020), the delta-method standard error against a
 bootstrap over users, and the sequential test against a simulated false positive
 rate under continuous peeking.
 

@@ -6,6 +6,7 @@
     abtest bayes --control 480 1000 --treatment 530 1000
     abtest ttest --csv data.csv --group-col variant --metric-col revenue
     abtest ratio --csv data.csv --numerator-col revenue --denominator-col sessions
+    abtest srm --counts 821588 815482
 """
 
 from __future__ import annotations
@@ -23,6 +24,7 @@ from . import (
     ratio_metric,
     sample_size_means,
     sample_size_proportions,
+    srm_check,
     ttest_means,
     ztest_proportions,
 )
@@ -107,6 +109,11 @@ def build_parser() -> argparse.ArgumentParser:
     rt.add_argument("--control-label", default="control")
     rt.add_argument("--treatment-label", default="treatment")
     rt.add_argument("--alpha", type=float, default=0.05)
+
+    sr = sub.add_parser("srm", help="sample ratio mismatch check on arm user counts")
+    sr.add_argument("--counts", nargs="+", type=int, required=True, help="users in each arm")
+    sr.add_argument("--ratios", nargs="+", type=float, help="configured split; default equal")
+    sr.add_argument("--threshold", type=float, default=0.001)
     return p
 
 
@@ -132,6 +139,8 @@ def main(argv: list[str] | None = None) -> int:
         out = bayes_means(*_load_arms(args)).to_dict()
     elif args.cmd == "ratio":
         out = ratio_metric(*_load_ratio_arms(args), alpha=args.alpha).to_dict()
+    elif args.cmd == "srm":
+        out = srm_check(args.counts, args.ratios, threshold=args.threshold).to_dict()
     else:  # pragma: no cover
         raise SystemExit(2)
     print(json.dumps(out, indent=2))

@@ -9,6 +9,7 @@ sequential    mixture sequential probability ratio test (mSPRT) with always-vali
 cuped         CUPED variance reduction using a pre-experiment covariate
 multiple      Bonferroni and Benjamini-Hochberg corrections for several metrics
 ratio_metrics delta-method inference for per-user ratio metrics
+srm           sample ratio mismatch check (chi-square goodness of fit)
 """
 
 from .bayesian import BayesResult, bayes_means, bayes_proportions
@@ -18,6 +19,7 @@ from .multiple import MultipleTestResult, adjust, benjamini_hochberg, bonferroni
 from .power import mde_means, mde_proportions, sample_size_means, sample_size_proportions
 from .ratio_metrics import RatioEstimate, RatioResult, ratio_estimate, ratio_metric
 from .sequential import SequentialResult, msprt_means, msprt_proportions
+from .srm import SRMResult, srm_check
 
 __all__ = [
     "BayesResult",
@@ -26,6 +28,7 @@ __all__ = [
     "ProportionResult",
     "RatioEstimate",
     "RatioResult",
+    "SRMResult",
     "SequentialResult",
     "adjust",
     "bayes_means",
@@ -41,6 +44,7 @@ __all__ = [
     "ratio_metric",
     "sample_size_means",
     "sample_size_proportions",
+    "srm_check",
     "ttest_means",
     "ztest_proportions",
 ]
